@@ -1,0 +1,31 @@
+Memory / follow-up context evidence
+Retail SQL Data Analyst Agent - LangGraph smoke test (src/graph.py)
+Model: gpt-5-nano via Tiger AI Gateway
+
+=== TURN 1 ===
+Question: Show total revenue by sales channel.
+SQL:
+SELECT st.sales_channel,
+       SUM(st.units_sold * st.unit_price * (1 - st.discount_pct / 100)) AS total_revenue
+FROM sales_transactions AS st
+GROUP BY st.sales_channel
+ORDER BY total_revenue DESC;
+ERROR: None
+ANSWER: The Partner sales channel produced the highest total revenue at 119,422.355. Online generated 110,858.65, In-store 88,697.065, and Mobile App 87,819.635 in total revenue. Overall, revenue ranks by channel from highest to lowest as Partner, Online, In-store, and Mobile App.
+
+=== TURN 2 (follow-up, using prior turn's history) ===
+Question: Now show only online channel.
+SQL:
+SELECT st.sales_channel,
+       SUM(st.units_sold * st.unit_price * (1 - st.discount_pct / 100)) AS total_revenue
+FROM sales_transactions AS st
+WHERE st.sales_channel = 'Online'
+GROUP BY st.sales_channel;
+ERROR: None
+ANSWER: Online channel generated total revenue of 110,858.65. This dataset contains only this channel entry, with no other channels shown.
+
+Note: Turn 2 correctly resolved "online channel" from Turn 1's context without the
+question re-stating "revenue" or "sales_channel" explicitly, and its independently
+recomputed total ($110,858.65) exactly matches the figure Turn 1 reported for Online -
+confirming both memory (context carried across turns) and grounding (summary matches
+actual SQL result, not a hallucinated number).
