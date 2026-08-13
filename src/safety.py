@@ -10,6 +10,27 @@ BLOCKED_KEYWORDS = [
     "dumpfile",
 ]
 
+DESTRUCTIVE_INTENT_KEYWORDS = [
+    "delete", "remove", "drop", "truncate", "update", "insert", "modify",
+    "erase", "wipe", "alter",
+]
+
+REFUSAL_MESSAGE = (
+    "This agent only answers read-only questions using SELECT queries. "
+    "It cannot delete, update, insert, or otherwise modify data."
+)
+
+
+def check_destructive_intent(question: str) -> str | None:
+    """Catch write/destructive intent in the user's natural-language question,
+    before an LLM call is ever made. Returns a refusal message, or None if the
+    question looks read-only."""
+    lowered = question.lower()
+    for word in DESTRUCTIVE_INTENT_KEYWORDS:
+        if re.search(rf"\b{word}\b", lowered):
+            return REFUSAL_MESSAGE
+    return None
+
 
 def validate_sql(sql: str) -> str:
     if not sql or not sql.strip():

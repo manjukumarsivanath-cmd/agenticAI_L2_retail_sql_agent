@@ -1,5 +1,12 @@
 """Interactive CLI for the Retail SQL Data Analyst Agent."""
 
+import sys
+from pathlib import Path
+
+# Allow running this file directly (e.g. VS Code's Run button uses `python src/app.py`,
+# which puts src/ - not the project root - on sys.path) as well as `python -m src.app`.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from src.graph import build_graph
 
 EXIT_COMMANDS = {"exit", "quit"}
