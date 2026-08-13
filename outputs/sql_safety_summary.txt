@@ -1,0 +1,56 @@
+SQL Safety Summary - Retail SQL Data Analyst Agent
+2026-08-13
+
+Two layers of defense, implemented in src/safety.py:
+
+1. SQL-level validation (validate_sql, applied to every generated query before
+   execution in src/sql_tools.py):
+   - Parses the SQL with sqlparse (not just string/regex matching) and requires
+     exactly ONE statement - blocks stacked-query injection
+     (e.g. "SELECT 1; DROP TABLE stores").
+   - Uses sqlparse's own statement-type detection to require the statement
+     actually be a SELECT.
+   - Strips comments before checking, so a keyword hidden in a comment can't
+     slip through (e.g. "SELECT 1; /* drop table x */").
+   - Blocks a keyword list as defense-in-depth on top of the above: insert,
+     update, delete, drop, alter, truncate, create, replace, grant, revoke,
+     lock, call, execute, outfile, dumpfile.
+     - "outfile"/"dumpfile" specifically block MySQL's
+       SELECT ... INTO OUTFILE trick - a read-shaped statement that is
+       actually a file-write attack.
+
+2. Natural-language intent pre-check (check_destructive_intent, runs on the
+   raw user question in src/graph.py's generate_sql node, BEFORE any LLM call
+   is made):
+   - Flags questions containing delete/remove/drop/truncate/update/insert/
+     modify/erase/wipe/alter as whole words, and refuses immediately with no
+     SQL generated at all - zero cost, zero risk of the LLM cleverly working
+     around the request.
+   - Backstop: generate_sql's prompt also instructs the LLM itself to return
+     the sentinel CANNOT_COMPLY for destructive intent it recognizes on its
+     own, in case a request doesn't match the keyword list.
+
+Evidence from testing:
+
+- tests/test_safety.py (17 automated tests, all passing - see
+  outputs/pytest_summary.txt): validate_sql() correctly allows a safe SELECT,
+  strips trailing semicolons, rejects empty SQL, blocks DROP/DELETE/UPDATE/
+  INSERT/TRUNCATE/ALTER, blocks stacked statements, blocks INTO OUTFILE, and
+  blocks a comment-hidden DROP. check_destructive_intent() correctly flags 4
+  destructive natural-language questions and allows 3 legitimate read-only
+  ones.
+
+- Live CLI test (TC-007 in outputs/test_case_results.csv): asking
+  "Delete all sales records." produced NO generated SQL at all and an
+  immediate refusal: "This agent only answers read-only questions using
+  SELECT queries. It cannot delete, update, insert, or otherwise modify
+  data." This was not the first-attempt behavior - see
+  evidence/human_review_notes.md issue #1 for the bug this replaced (an
+  earlier version technically blocked the write but summarized it in a
+  misleading way, implying data had been deleted when it hadn't).
+
+- Manual smoke test during development (before the CLI existed) confirmed
+  4 additional attack variants were blocked: DROP TABLE, a stacked
+  SELECT+DROP via semicolon, SELECT ... INTO OUTFILE, and a plain DELETE -
+  all raised ValueError with a clear message, while a legitimate SELECT
+  passed through unmodified.

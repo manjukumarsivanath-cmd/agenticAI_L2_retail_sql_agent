@@ -1,0 +1,49 @@
+MySQL Validation - Retail SQL Data Analyst Agent
+2026-08-13
+
+Server: MySQL Server 8.4.9 (service MySQL84), MySQL Workbench 8.0 CE 8.0.47.
+Database: retail_agent_assignment
+
+1. Connection test (MySQL Workbench, "Local" connection, 127.0.0.1:3306, root):
+   "Successfully made the MySQL connection." SSL enabled with
+   TLS_AES_128_GCM_SHA256.
+
+2. Schema creation (database/mysql_schema.sql, run in Workbench):
+   All statements executed successfully (green checkmark on each row in the
+   Output panel):
+     1. CREATE DATABASE IF NOT EXISTS retail_agent_assignment  - success
+     2. USE retail_agent_assignment                             - success
+     3. CREATE TABLE IF NOT EXISTS stores (...)                 - success
+     4. CREATE TABLE IF NOT EXISTS products (...)                - success
+     5. CREATE TABLE IF NOT EXISTS customers (...)                - success
+     6. CREATE TABLE IF NOT EXISTS sales_transactions (...)        - success
+     7. CREATE TABLE IF NOT EXISTS returns (...)                    - success
+   Schema browser confirmed all 5 tables present under retail_agent_assignment
+   after refresh.
+
+3. Data load (database/load_data.py):
+   Data load complete. Row counts:
+     stores: 15
+     products: 10
+     customers: 80
+     sales_transactions: 360
+     returns: 46
+   Cross-checked against the source CSVs directly (wc -l per file, minus
+   header row) - every count matches exactly, confirming no rows were
+   dropped or duplicated during load. load_data.py deletes existing rows
+   before reloading (in FK-safe order: returns/sales_transactions first,
+   then customers/products/stores), so it is safe to re-run.
+
+4. Live query validation (tests/test_sql_tools.py, integration tests against
+   this same database - see outputs/pytest_summary.txt):
+   - SELECT store_id, region FROM stores LIMIT 3 returns 3 dict rows with the
+     expected keys.
+   - SELECT COUNT(*) AS n FROM stores returns exactly 15, matching the loaded
+     row count above.
+   - An unsafe query (DELETE FROM stores) is rejected by safety.py before it
+     ever reaches the database connection.
+
+5. Referential integrity spot-check: summing returns counts per product
+   category (joining sales_transactions to returns via order_id) totals
+   exactly 46 across all categories - matching the returns table's own row
+   count exactly, confirming the join does not fan out / double-count.
