@@ -1,0 +1,36 @@
+Pytest summary - Retail SQL Data Analyst Agent
+Run 2026-08-13, Python 3.14.6, pytest 9.1.1
+
+===================================================================== test session starts =====================================================================
+platform win32 -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0
+rootdir: C:\Users\manjukumar.sivanath\agenticAI_L2_retail_sql_agent
+configfile: pytest.ini
+collected 40 items
+
+tests/test_graph_helpers.py .............. (14 passed)
+tests/test_memory.py ....                  (4 passed)
+tests/test_safety.py .................      (17 passed)
+tests/test_sql_tools.py ...                (3 passed)
+
+===================================================================== 40 passed in 1.81s ======================================================================
+
+Coverage by file:
+- tests/test_safety.py (17 tests): validate_sql() - allows safe SELECT, strips trailing
+  semicolon, rejects empty SQL, blocks 6 write-statement types (DROP/DELETE/UPDATE/INSERT/
+  TRUNCATE/ALTER), blocks stacked statements, blocks SELECT...INTO OUTFILE, blocks
+  comment-hidden destructive keywords. check_destructive_intent() - flags 4 destructive
+  natural-language questions, allows 3 legitimate read-only questions.
+- tests/test_sql_tools.py (3 tests, integration - hits the real local MySQL database):
+  run_select() returns list of dicts with expected keys, blocks unsafe SQL before ever
+  reaching the database, row count matches the actual loaded data (15 stores).
+- tests/test_memory.py (4 tests): add_turn() appends correctly and bounds to MAX_TURNS
+  (oldest turns dropped), format_history() handles both empty and populated history.
+- tests/test_graph_helpers.py (14 tests): the deterministic graph.py logic where today's
+  real bugs were found and fixed - _is_empty_result() (including the SUM-over-empty-set
+  NULL edge case), _tables_used_in(), is_explainability_question(), _strip_code_fences(),
+  route_after_generate_sql() (all 3 routing branches: normal/error/direct-answer).
+
+Deliberately NOT tested here: generate_sql() and summarize() in graph.py, since both make
+real paid calls to the Tiger AI Gateway - excluded to keep this suite fast, free, and
+repeatable. Their behavior is instead verified via the manual CLI evidence in
+outputs/memory_followup_evidence.txt and outputs/test_case_results.csv.
